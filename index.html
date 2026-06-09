@@ -1,0 +1,908 @@
+<!DOCTYPE html> 
+<html lang="en"> 
+<head> 
+<meta charset="UTF-8"/> 
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/> 
+<title>NEON FIST — Cyberpunk Beat Em Up</title> 
+<style> 
+*{margin:0;padding:0;box-sizing:border-box;} 
+body{ 
+  background:#000; 
+  display:flex;flex-direction:column; 
+  align-items:center;justify-content:center; 
+  height:100vh;overflow:hidden; 
+  font-family:'Courier New',monospace; 
+} 
+#gameWrapper{ 
+  position:relative; 
+  width:800px;height:480px; 
+  border:2px solid #0ff; 
+  box-shadow:0 0 30px #0ff,0 0 60px #005f5f; 
+} 
+canvas{ 
+  display:block; 
+  image-rendering:pixelated; 
+  image-rendering:crisp-edges; 
+  width:800px;height:480px; 
+} 
+#crt{ 
+  position:absolute;top:0;left:0; 
+  width:100%;height:100%; 
+  background:repeating-linear-gradient( 
+    to bottom, 
+    rgba(0,0,0,0.10) 0px, 
+    rgba(0,0,0,0.10) 1px, 
+    transparent 1px, 
+    transparent 3px 
+  ); 
+  pointer-events:none;z-index:10; 
+} 
+#hud{ 
+  position:absolute;top:8px;left:8px; 
+  z-index:5;color:#0ff; 
+  font-family:'Courier New',monospace; 
+  font-size:13px; 
+  text-shadow:0 0 6px #0ff; 
+} 
+#hpBar{ 
+  width:160px;height:10px; 
+  background:#111;border:1px solid #0ff; 
+  margin-top:3px; 
+} 
+#hpFill{ 
+  height:100%;width:100%; 
+  background:linear-gradient(90deg,#0ff,#00f); 
+  transition:width 0.2s; 
+} 
+#scoreBox{ 
+  position:absolute;top:8px;right:8px; 
+  z-index:5;color:#f0f; 
+  font-family:'Courier New',monospace; 
+  font-size:13px; 
+  text-shadow:0 0 6px #f0f; 
+  text-align:right; 
+} 
+#overlay{ 
+  position:absolute;top:0;left:0; 
+  width:100%;height:100%; 
+  background:rgba(0,0,0,0.82); 
+  display:flex;flex-direction:column; 
+  align-items:center;justify-content:center; 
+  z-index:20;color:#0ff; 
+  font-family:'Courier New',monospace; 
+  text-align:center; 
+} 
+#overlay h1{ 
+  font-size:42px;letter-spacing:6px; 
+  text-shadow:0 0 20px #0ff,0 0 40px #0ff; 
+  margin-bottom:10px; 
+} 
+#overlay p{ 
+  font-size:14px;color:#aff; 
+  margin-bottom:6px; 
+  text-shadow:0 0 6px #0ff; 
+} 
+#overlay button{ 
+  margin-top:18px; 
+  padding:10px 32px; 
+  background:transparent; 
+  border:2px solid #0ff; 
+  color:#0ff;font-size:16px; 
+  font-family:'Courier New',monospace; 
+  letter-spacing:3px;cursor:pointer; 
+  text-shadow:0 0 8px #0ff; 
+  box-shadow:0 0 12px #0ff; 
+  transition:all 0.2s; 
+} 
+#overlay button:hover{ 
+  background:#0ff;color:#000; 
+} 
+/* Mobile Touch Controls */ 
+#touchControls{ 
+  position:absolute;bottom:10px;left:0; 
+  width:100%;display:flex; 
+  justify-content:space-between; 
+  align-items:flex-end; 
+  padding:0 12px;z-index:15; 
+  pointer-events:none; 
+} 
+.dpad{ 
+  display:grid; 
+  grid-template-columns:repeat(3,40px); 
+  grid-template-rows:repeat(3,40px); 
+  gap:3px;pointer-events:all; 
+} 
+.dpad button{ 
+  background:rgba(0,255,255,0.12); 
+  border:1px solid rgba(0,255,255,0.5); 
+  color:#0ff;font-size:16px;cursor:pointer; 
+  border-radius:4px; 
+  text-shadow:0 0 6px #0ff; 
+  -webkit-tap-highlight-color:transparent; 
+} 
+.dpad button:active{background:rgba(0,255,255,0.35);} 
+.actionBtns{ 
+  display:flex;flex-direction:column; 
+  gap:6px;pointer-events:all; 
+} 
+.actionBtns button{ 
+  width:52px;height:52px; 
+  background:rgba(255,0,255,0.12); 
+  border:1px solid rgba(255,0,255,0.5); 
+  color:#f0f;font-size:13px; 
+  font-family:'Courier New',monospace; 
+  cursor:pointer;border-radius:50%; 
+  text-shadow:0 0 6px #f0f; 
+  -webkit-tap-highlight-color:transparent; 
+} 
+.actionBtns button:active{background:rgba(255,0,255,0.35);} 
+/* Ad placeholder */ 
+#adBanner{ 
+  width:800px;height:32px; 
+  background:#0a0a0a; 
+  border:1px solid #222; 
+  display:flex;align-items:center; 
+  justify-content:center; 
+  color:#333;font-size:11px; 
+  font-family:'Courier New',monospace; 
+  margin-top:4px; 
+} 
+</style> 
+</head> 
+<body> 
+<div id="gameWrapper"> 
+  <canvas id="gameCanvas" width="800" height="480"></canvas> 
+  <div id="crt"></div> 
+  <div id="hud"> 
+    HP: <span id="hpVal">100</span> 
+    <div id="hpBar"><div id="hpFill"></div></div> 
+  </div> 
+  <div id="scoreBox"> 
+    SCORE: <span id="scoreVal">0</span><br/> 
+    BEST: <span id="bestVal">0</span><br/> 
+    WAVE: <span id="waveVal">1</span> 
+  </div> 
+  <div id="overlay"> 
+    <h1>NEON FIST</h1> 
+    <p>CYBERPUNK STREET BRAWLER</p> 
+    <p style="font-size:12px;margin-top:10px;"> 
+      WASD / ARROWS = MOVE &nbsp;|&nbsp; SPACE = JUMP<br/> 
+      Z = PUNCH &nbsp;|&nbsp; X = KICK 
+    </p> 
+    <button id="startBtn">[ START GAME ]</button> 
+  </div> 
+  <!-- Touch Controls --> 
+  <div id="touchControls"> 
+    <div class="dpad"> 
+      <button></button> 
+      <button id="tUp">▲</button> 
+      <button></button> 
+      <button id="tLeft">◀</button> 
+      <button></button> 
+      <button id="tRight">▶</button> 
+      <button></button> 
+      <button id="tDown">▼</button> 
+      <button></button> 
+    </div> 
+    <div class="actionBtns"> 
+      <button id="tJump">JMP</button> 
+      <button id="tPunch">Z</button> 
+      <button id="tKick">X</button> 
+    </div> 
+  </div> 
+</div> 
+<div id="adBanner">[ ADVERTISEMENT SPACE — 728x32 ]</div> 
+</style> 
+</head> 
+<body> 
+<div id="gameWrapper"> 
+  <canvas id="gameCanvas" width="800" height="480"></canvas> 
+  <div id="crt" style="position:absolute;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(to bottom,rgba(0,0,0,0.10) 0px,rgba(0,0,0,0.10) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:10;"></div> 
+  <div id="hud" style="position:absolute;top:8px;left:8px;z-index:5;color:#0ff;font-family:'Courier New',monospace;font-size:13px;text-shadow:0 0 6px #0ff;"> 
+    HP: <span id="hpVal">100</span> 
+    <div style="width:160px;height:10px;background:#111;border:1px solid #0ff;margin-top:3px;"><div id="hpBar" style="height:100%;width:100%;background:#0ff;transition:width 0.2s;"></div></div> 
+    <div style="margin-top:4px;">SCORE: <span id="scoreVal">0</span></div> 
+    <div>HI: <span id="hiVal">0</span></div> 
+    <div>WAVE: <span id="waveVal">1</span></div> 
+  </div> 
+  <div id="overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;background:rgba(0,0,0,0.82);"> 
+    <div style="color:#0ff;font-size:36px;font-family:'Courier New',monospace;text-shadow:0 0 20px #0ff,0 0 40px #0ff;letter-spacing:6px;">NEON FIST</div> 
+    <div style="color:#ff0090;font-size:14px;margin-top:8px;text-shadow:0 0 8px #ff0090;">CYBERPUNK BEAT EM UP</div> 
+    <div style="color:#fff;font-size:12px;margin-top:20px;">WASD / ARROWS = MOVE &nbsp;|&nbsp; SPACE = JUMP &nbsp;|&nbsp; Z = PUNCH &nbsp;|&nbsp; X = KICK</div> 
+    <button id="startBtn" style="margin-top:24px;padding:12px 32px;background:transparent;border:2px solid #0ff;color:#0ff;font-family:'Courier New',monospace;font-size:16px;cursor:pointer;text-shadow:0 0 8px #0ff;box-shadow:0 0 16px #0ff;">START GAME</button> 
+  </div> 
+  <div id="dpad" style="position:absolute;bottom:16px;left:16px;z-index:15;display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:4px;"> 
+    <div></div> 
+    <button class="dBtn" id="dUp" style="background:rgba(0,255,255,0.15);border:1px solid #0ff;color:#0ff;font-size:18px;cursor:pointer;">▲</button> 
+    <div></div> 
+    <button class="dBtn" id="dLeft" style="background:rgba(0,255,255,0.15);border:1px solid #0ff;color:#0ff;font-size:18px;cursor:pointer;">◀</button> 
+    <div style="background:rgba(0,255,255,0.05);border:1px solid #333;"></div> 
+    <button class="dBtn" id="dRight" style="background:rgba(0,255,255,0.15);border:1px solid #0ff;color:#0ff;font-size:18px;cursor:pointer;">▶</button> 
+    <div></div> 
+    <button class="dBtn" id="dDown" style="background:rgba(0,255,255,0.15);border:1px solid #0ff;color:#0ff;font-size:18px;cursor:pointer;">▼</button> 
+    <div></div> 
+  </div> 
+  <div style="position:absolute;bottom:16px;right:16px;z-index:15;display:flex;gap:10px;"> 
+    <button class="aBtn" id="btnJump" style="width:50px;height:50px;background:rgba(255,0,144,0.2);border:2px solid #ff0090;color:#ff0090;font-family:'Courier New',monospace;font-size:11px;cursor:pointer;text-shadow:0 0 6px #ff0090;">JMP</button> 
+    <button class="aBtn" id="btnPunch" style="width:50px;height:50px;background:rgba(255,200,0,0.2);border:2px solid #ffc800;color:#ffc800;font-family:'Courier New',monospace;font-size:11px;cursor:pointer;text-shadow:0 0 6px #ffc800;">PNC</button> 
+    <button class="aBtn" id="btnKick" style="width:50px;height:50px;background:rgba(255,80,0,0.2);border:2px solid #ff5000;color:#ff5000;font-family:'Courier New',monospace;font-size:11px;cursor:pointer;text-shadow:0 0 6px #ff5000;">KCK</button> 
+  </div> 
+</div> 
+<script> 
+// ============================================================ 
+// NEON FIST — Full 2.5D Cyberpunk Beat Em Up Engine 
+// Web Audio API, Pixel Art Canvas, FSM Enemy AI, Particles 
+// ============================================================ 
+ 
+const canvas = document.getElementById('gameCanvas'); 
+const ctx = canvas.getContext('2d'); 
+ctx.imageSmoothingEnabled = false; 
+ 
+// --- Audio Engine (Web Audio API — no external files) --- 
+const AC = new (window.AudioContext || window.webkitAudioContext)(); 
+function playSound(type) { 
+  const o = AC.createOscillator(), g = AC.createGain(); 
+  o.connect(g); g.connect(AC.destination); 
+  if (type === 'punch') { o.type='square'; o.frequency.setValueAtTime(180,AC.currentTime); o.frequency.exponentialRampToValueAtTime(60,AC.currentTime+0.12); g.gain.setValueAtTime(0.4,AC.currentTime); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.15); } 
+  else if (type === 'kick') { o.type='sawtooth'; o.frequency.setValueAtTime(220,AC.currentTime); o.frequency.exponentialRampToValueAtTime(40,AC.currentTime+0.18); g.gain.setValueAtTime(0.5,AC.currentTime); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.2); } 
+  else if (type === 'jump') { o.type='sine'; o.frequency.setValueAtTime(300,AC.currentTime); o.frequency.exponentialRampToValueAtTime(600,AC.currentTime+0.1); g.gain.setValueAtTime(0.2,AC.currentTime); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.15); } 
+  else if (type === 'hit') { o.type='square'; o.frequency.setValueAtTime(80,AC.currentTime); o.frequency.exponentialRampToValueAtTime(30,AC.currentTime+0.1); g.gain.setValueAtTime(0.6,AC.currentTime); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.12); } 
+  else if (type === 'die') { o.type='sawtooth'; o.frequency.setValueAtTime(400,AC.currentTime); o.frequency.exponentialRampToValueAtTime(20,AC.currentTime+0.5); g.gain.setValueAtTime(0.5,AC.currentTime); g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.55); } 
+  o.start(AC.currentTime); o.stop(AC.currentTime+0.6); 
+} 
+ 
+// --- Game State --- 
+let gameRunning = false, score = 0, wave = 1; 
+let hiScore = parseInt(localStorage.getItem('neonFistHi')||'0'); 
+document.getElementById('hiVal').textContent = hiScore; 
+ 
+// --- Screen Shake --- 
+let shakeFrames = 0, shakeAmt = 0; 
+function triggerShake(amt, frames) { shakeAmt = amt; shakeFrames = frames; } 
+ 
+// --- Particles --- 
+const particles = []; 
+function spawnParticles(x, y, color, count) { 
+  for (let i = 0; i < count; i++) { 
+    const angle = Math.random() * Math.PI * 2; 
+    const speed = 1.5 + Math.random() * 3; 
+    particles.push({ x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed - 1, life: 20 + Math.random()*15, maxLife: 35, color }); 
+  } 
+} 
+function updateParticles() { 
+  for (let i = particles.length - 1; i >= 0; i--) { 
+    const p = particles[i]; 
+    p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life--; 
+    if (p.life <= 0) particles.splice(i, 1); 
+  } 
+} 
+function drawParticles() { 
+  particles.forEach(p => { 
+    ctx.globalAlpha = p.life / p.maxLife; 
+    ctx.fillStyle = p.color; 
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), 3, 3); 
+  }); 
+  ctx.globalAlpha = 1; 
+} 
+ 
+// --- Input --- 
+const keys = {}; 
+document.addEventListener('keydown', e => { keys[e.code] = true; if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault(); }); 
+document.addEventListener('keyup', e => { keys[e.code] = false; }); 
+ 
+// D-pad touch 
+function bindDpad(id, code) { 
+  const el = document.getElementById(id); 
+  el.addEventListener('touchstart', e => { e.preventDefault(); keys[code] = true; }, {passive:false}); 
+  el.addEventListener('touchend', e => { e.preventDefault(); keys[code] = false; }, {passive:false}); 
+  el.addEventListener('mousedown', () => keys[code] = true); 
+  el.addEventListener('mouseup', () => keys[code] = false); 
+} 
+bindDpad('dUp','ArrowUp'); bindDpad('dDown','ArrowDown'); 
+bindDpad('dLeft','ArrowLeft'); bindDpad('dRight','ArrowRight'); 
+ 
+document.getElementById('btnJump').addEventListener('touchstart', e => { e.preventDefault(); keys['Space']=true; },{passive:false}); 
+document.getElementById('btnJump').addEventListener('touchend', e => { e.preventDefault(); keys['Space']=false; },{passive:false}); 
+document.getElementById('btnPunch').addEventListener('touchstart', e => { e.preventDefault(); keys['KeyZ']=true; },{passive:false}); 
+document.getElementById('btnPunch').addEventListener('touchend', e => { e.preventDefault(); keys['KeyZ']=false; },{passive:false}); 
+document.getElementById('btnKick').addEventListener('touchstart', e => { e.preventDefault(); keys['KeyX']=true; },{passive:false}); 
+document.getElementById('btnKick').addEventListener('touchend', e => { e.preventDefault(); keys['KeyX']=false; },{passive:false}); 
+ 
+// --- Ground / Depth Constants --- 
+const GROUND_TOP = 260, GROUND_BOT = 420; 
+const GRAVITY = 0.55, JUMP_FORCE = -11; 
+ 
+// --- Player --- 
+const player = { 
+  x: 200, y: 340, z: 0, vz: 0, 
+  w: 28, h: 44, 
+  speed: 3, hp: 100, maxHp: 100, 
+  facing: 1, // 1=right, -1=left 
+  state: 'idle', // idle, walk, jump, punch, kick, hurt, dead 
+  stateTimer: 0, 
+  attackCooldown: 0, 
+  hurtCooldown: 0, 
+  hitbox: null, 
+  animFrame: 0, animTimer: 0, 
+  punchPressed: false, kickPressed: false, jumpPressed: false, 
+}; 
+ 
+// --- Enemies --- 
+function makeEnemy(x, y, hp, speed) { 
+  return { x, y, z: 0, vz: 0, w: 26, h: 42, speed, hp, maxHp: hp, 
+    facing: -1, state: 'patrol', stateTimer: 0, attackCooldown: 0, 
+    hurtCooldown: 0, hitbox: null, animFrame: 0, animTimer: 0, 
+    patrolDir: 1, patrolTimer: 60, alertTimer: 0, dead: false }; 
+} 
+let enemies = []; 
+ 
+function spawnWave(w) { 
+  enemies = []; 
+  const count = Math.min(2 + w, 5); 
+  for (let i = 0; i < count; i++) { 
+    const side = i % 2 === 0 ? 650 + i * 40 : 50 - i * 20; 
+    const yPos = GROUND_TOP + 40 + Math.random() * (GROUND_BOT - GROUND_TOP - 80); 
+    const spd = 1.2 + w * 0.15 + Math.random() * 0.3; 
+    const ehp = 40 + w * 10; 
+    enemies.push(makeEnemy(Math.max(30, Math.min(770, side)), yPos, ehp, spd)); 
+  } 
+} 
+<script> 
+// ============================================================ 
+// NEON FIST — Cyberpunk 2.5D Beat Em Up Engine 
+// ============================================================ 
+ 
+const canvas = document.getElementById('gameCanvas'); 
+const ctx = canvas.getContext('2d'); 
+ctx.imageSmoothingEnabled = false; 
+ 
+// ---- GAME STATE ---- 
+let gameState = 'start'; // 'start' | 'playing' | 'gameover' 
+let score = 0; 
+let hiScore = parseInt(localStorage.getItem('neonFistHi') || '0'); 
+let wave = 1; 
+let frameCount = 0; 
+let shakeTimer = 0; 
+let shakeIntensity = 0; 
+let hitStopFrames = 0; 
+ 
+// ---- CANVAS DIMENSIONS ---- 
+const W = 800; 
+const H = 480; 
+const GROUND_TOP = 280; 
+const GROUND_BOT = 420; 
+ 
+// ---- INPUT STATE ---- 
+const keys = {}; 
+document.addEventListener('keydown', e => { keys[e.code] = true; }); 
+document.addEventListener('keyup',   e => { keys[e.code] = false; }); 
+ 
+// ---- PARTICLES ARRAY ---- 
+let particles = []; 
+ 
+// ---- AUDIO CONTEXT ---- 
+let audioCtx = null; 
+function getAudio() { 
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+  return audioCtx; 
+} 
+// ---- AUDIO CONTEXT (continued) ---- 
+let audioCtx = null; 
+function getAudio() { 
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+  return audioCtx; 
+} 
+ 
+// Synthesize a retro beep sound 
+function playSound(type) { 
+  try { 
+    const ac = getAudio(); 
+    const osc = ac.createOscillator(); 
+    const gain = ac.createGain(); 
+    osc.connect(gain); 
+    gain.connect(ac.destination); 
+    if (type === 'punch') { 
+      osc.type = 'square'; 
+      osc.frequency.setValueAtTime(220, ac.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(80, ac.currentTime + 0.12); 
+      gain.gain.setValueAtTime(0.4, ac.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.15); 
+      osc.start(); osc.stop(ac.currentTime + 0.15); 
+    } else if (type === 'kick') { 
+      osc.type = 'sawtooth'; 
+      osc.frequency.setValueAtTime(300, ac.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(60, ac.currentTime + 0.18); 
+      gain.gain.setValueAtTime(0.5, ac.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.2); 
+      osc.start(); osc.stop(ac.currentTime + 0.2); 
+    } else if (type === 'jump') { 
+      osc.type = 'sine'; 
+      osc.frequency.setValueAtTime(200, ac.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(600, ac.currentTime + 0.15); 
+      gain.gain.setValueAtTime(0.3, ac.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.2); 
+      osc.start(); osc.stop(ac.currentTime + 0.2); 
+    } else if (type === 'hurt') { 
+      osc.type = 'square'; 
+      osc.frequency.setValueAtTime(100, ac.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.25); 
+      gain.gain.setValueAtTime(0.5, ac.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.3); 
+      osc.start(); osc.stop(ac.currentTime + 0.3); 
+    } 
+  } catch(e) {} 
+} 
+ 
+// ---- PLAYER OBJECT ---- 
+const player = { 
+  x: 300, y: 350,   // x = horizontal, y = ground depth 
+  z: 0,             // z = jump height (vertical on screen) 
+  vz: 0,            // vertical velocity for jump 
+  w: 28, h: 48,     // sprite dimensions 
+  hp: 100, maxHp: 100, 
+  speed: 3, 
+  state: 'idle',    // idle | walk | punch | kick | jump | hurt 
+  facing: 1,        // 1 = right, -1 = left 
+  attackTimer: 0, 
+  attackDuration: 18, 
+  hurtTimer: 0, 
+  hurtDuration: 20, 
+  invincible: 0, 
+  color: '#0ff', 
+  accentColor: '#ff0080', 
+  onGround: true 
+}; 
+    } else if (type === 'kick') { 
+      osc.type = 'sawtooth'; 
+      osc.frequency.setValueAtTime(300, ac.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(60, ac.currentTime + 0.18); 
+      gain.gain.setValueAtTime(0.5, ac.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.2); 
+      osc.start(); osc.stop(ac.currentTime + 0.2); 
+    } else if (type === 'jump') { 
+      osc.type = 'sine'; 
+      osc.frequency.setValueAtTime(180, ac.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(440, ac.currentTime + 0.1); 
+      gain.gain.setValueAtTime(0.2, ac.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.15); 
+      osc.start(); osc.stop(ac.currentTime + 0.15); 
+    } else if (type === 'hurt') { 
+      osc.type = 'square'; 
+      osc.frequency.setValueAtTime(100, ac.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.25); 
+      gain.gain.setValueAtTime(0.6, ac.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.3); 
+      osc.start(); osc.stop(ac.currentTime + 0.3); 
+    } 
+  } catch(e) {} 
+} 
+ 
+// ---- SCREEN SHAKE ---- 
+function triggerShake(intensity, duration) { 
+  shakeIntensity = intensity; 
+  shakeTimer = duration; 
+} 
+ 
+// ---- PARTICLE SYSTEM ---- 
+function spawnParticles(x, y, color, count) { 
+  for (let i = 0; i < count; i++) { 
+    const angle = Math.random() * Math.PI * 2; 
+    const speed = 1.5 + Math.random() * 3.5; 
+    particles.push({ 
+      x, y, 
+      vx: Math.cos(angle) * speed, 
+      vy: Math.sin(angle) * speed - 1, 
+      life: 1.0, 
+      decay: 0.04 + Math.random() * 0.04, 
+      size: 2 + Math.floor(Math.random() * 4), 
+      color: color 
+    }); 
+  } 
+} 
+ 
+function updateParticles() { 
+  for (let i = particles.length - 1; i >= 0; i--) { 
+    const p = particles[i]; 
+    p.x += p.vx; 
+    p.y += p.vy; 
+    p.vy += 0.15; // gravity 
+    p.life -= p.decay; 
+    if (p.life <= 0) particles.splice(i, 1); 
+  } 
+} 
+ 
+function drawParticles() { 
+  for (const p of particles) { 
+    ctx.globalAlpha = p.life; 
+    ctx.fillStyle = p.color; 
+    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size); 
+  } 
+  ctx.globalAlpha = 1.0; 
+} 
+    } else if (type === 'hurt') { 
+      osc.type = 'square'; 
+      osc.frequency.setValueAtTime(100, ac.currentTime); 
+      osc.frequency.exponentialRampToValueAtTime(40, ac.currentTime + 0.2); 
+      gain.gain.setValueAtTime(0.5, ac.currentTime); 
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.25); 
+      osc.start(); osc.stop(ac.currentTime + 0.25); 
+    } 
+  } catch(e) {} 
+} 
+ 
+// ---- PARTICLE SYSTEM ---- 
+function spawnParticles(x, y, color, count) { 
+  for (let i = 0; i < count; i++) { 
+    const angle = Math.random() * Math.PI * 2; 
+    const speed = 1.5 + Math.random() * 3; 
+    particles.push({ 
+      x, y, 
+      vx: Math.cos(angle) * speed, 
+      vy: Math.sin(angle) * speed, 
+      life: 1.0, 
+      decay: 0.04 + Math.random() * 0.04, 
+      size: 2 + Math.random() * 3, 
+      color 
+    }); 
+  } 
+} 
+ 
+function updateParticles() { 
+  for (let i = particles.length - 1; i >= 0; i--) { 
+    const p = particles[i]; 
+    p.x += p.vx; p.y += p.vy; 
+    p.vy += 0.15; 
+    p.life -= p.decay; 
+    if (p.life <= 0) particles.splice(i, 1); 
+  } 
+} 
+ 
+function drawParticles() { 
+  for (const p of particles) { 
+    ctx.globalAlpha = p.life; 
+    ctx.fillStyle = p.color; 
+    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size); 
+  } 
+  ctx.globalAlpha = 1; 
+} 
+ 
+// ---- PLAYER OBJECT ---- 
+const player = { 
+  x: 200, y: 350, z: 0, 
+  vz: 0, 
+  w: 28, h: 48, 
+  speed: 3, 
+  hp: 100, maxHp: 100, 
+  state: 'idle', 
+  facing: 1, 
+  attackTimer: 0, 
+  attackType: '', 
+  attackCooldown: 0, 
+  hurtTimer: 0, 
+  invincible: 0, 
+  animFrame: 0, 
+  animTimer: 0 
+}; 
+    }); 
+  } 
+} 
+ 
+function updateParticles() { 
+  for (let i = particles.length - 1; i >= 0; i--) { 
+    const p = particles[i]; 
+    p.x += p.vx; 
+    p.y += p.vy; 
+    p.vy += 0.15; // gravity on particles 
+    p.life -= p.decay; 
+    if (p.life <= 0) particles.splice(i, 1); 
+  } 
+} 
+ 
+function drawParticles() { 
+  for (const p of particles) { 
+    ctx.globalAlpha = p.life; 
+    ctx.fillStyle = p.color; 
+    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size); 
+  } 
+  ctx.globalAlpha = 1; 
+} 
+ 
+// ---- PLAYER OBJECT ---- 
+const player = { 
+  x: 200, y: 350, z: 0,    // x=horizontal, y=ground depth, z=jump height 
+  vz: 0,                    // vertical jump velocity 
+  w: 24, h: 40,             // sprite width/height 
+  hp: 100, maxHp: 100, 
+  speed: 3, 
+  facing: 1,                // 1=right, -1=left 
+  state: 'idle',            // idle|walk|jump|punch|kick|hurt 
+  stateTimer: 0, 
+  attackCooldown: 0, 
+  hurtTimer: 0, 
+  isJumping: false, 
+  score: 0, 
+ 
+  // Hitbox for attacks 
+  attackBox: null, 
+  attackType: null, 
+ 
+  update() { 
+    if (hitStopFrames > 0) return; 
+ 
+    // State timers 
+    if (this.stateTimer > 0) this.stateTimer--; 
+    if (this.attackCooldown > 0) this.attackCooldown--; 
+    if (this.hurtTimer > 0) this.hurtTimer--; 
+ 
+    // Clear attack box each frame 
+    this.attackBox = null; 
+ 
+    // Hurt state locks movement briefly 
+    if (this.hurtTimer > 0) return; 
+ 
+    // ---- ATTACK INPUT ---- 
+    if (this.attackCooldown === 0) { 
+      if (keys['KeyZ']) { 
+        this.state = 'punch'; 
+        this.stateTimer = 18; 
+        this.attackCooldown = 22; 
+        this.attackType = 'punch'; 
+        playSound('punch'); 
+        // Define punch hitbox 
+        this.attackBox = { 
+          x: this.x + (this.facing === 1 ? this.w : -36), 
+          y: this.y - this.z - this.h + 8, 
+          w: 36, h: 20 
+        }; 
+      } else if (keys['KeyX']) { 
+        this.state = 'kick'; 
+        this.stateTimer = 20; 
+        this.attackCooldown = 26; 
+        this.attackType = 'kick'; 
+        playSound('kick'); 
+        this.attackBox = { 
+          x: this.x + (this.facing === 1 ? this.w : -44), 
+          y: this.y - this.z - this.h + 14, 
+          w: 44, h: 18 
+        }; 
+      } 
+    } 
+  facing: 1,                // 1=right, -1=left 
+  state: 'idle',            // 'idle'|'walk'|'jump'|'punch'|'kick'|'hurt' 
+  stateTimer: 0, 
+  attackCooldown: 0, 
+  hurtTimer: 0, 
+  invincible: 0, 
+  animFrame: 0, 
+  animTimer: 0, 
+ 
+  // Hitbox for attacks 
+  getAttackBox() { 
+    const reach = this.facing === 1 ? this.x + this.w : this.x - 36; 
+    return { 
+      x: reach, 
+      y: this.y - this.z - this.h, 
+      w: 36, h: this.h, 
+      depth: this.y  // used for Z-depth collision 
+    }; 
+  }, 
+ 
+  // Hurtbox (body) 
+  getHurtBox() { 
+    return { 
+      x: this.x - this.w / 2, 
+      y: this.y - this.z - this.h, 
+      w: this.w, h: this.h, 
+      depth: this.y 
+    }; 
+  } 
+}; 
+ 
+// ---- ENEMY FACTORY ---- 
+function createEnemy(x, y) { 
+  return { 
+    x, y, z: 0, vz: 0, 
+    w: 22, h: 38, 
+    hp: 60 + wave * 10, 
+    maxHp: 60 + wave * 10, 
+    speed: 1.2 + wave * 0.15, 
+    facing: -1, 
+    state: 'patrol',   // FSM: 'patrol'|'chase'|'attack'|'hurt'|'dead' 
+    stateTimer: 0, 
+    hurtTimer: 0, 
+    attackCooldown: 0, 
+    patrolDir: Math.random() > 0.5 ? 1 : -1, 
+    patrolTimer: 60 + Math.random() * 60, 
+ 
+    getHurtBox() { 
+      return { 
+        x: this.x - this.w / 2, 
+        y: this.y - this.z - this.h, 
+        w: this.w, h: this.h, 
+        depth: this.y 
+      }; 
+    } 
+  }; 
+} 
+ 
+let enemies = []; 
+function spawnWave() { 
+  enemies = []; 
+  const count = 1 + wave; 
+  for (let i = 0; i < count; i++) { 
+    const side = i % 2 === 0 ? 650 + Math.random()*100 : 20 + Math.random()*80; 
+    const depth = GROUND_TOP + Math.random() * (GROUND_BOT - GROUND_TOP); 
+    enemies.push(createEnemy(side, depth)); 
+  } 
+} 
+function createEnemy(x, y, id) { 
+  return { 
+    id, x, y, z: 0, vz: 0, 
+    w: 24, h: 40, 
+    hp: 60, maxHp: 60, 
+    speed: 1.2 + wave * 0.15, 
+    facing: -1, 
+    state: 'patrol',   // FSM: 'patrol'|'chase'|'attack'|'hurt'|'dead' 
+    stateTimer: 0, 
+    attackCooldown: 0, 
+    hurtTimer: 0, 
+    patrolDir: 1, 
+    patrolTimer: 60 + Math.random() * 60, 
+    animFrame: 0, 
+    animTimer: 0, 
+ 
+    getHurtBox() { 
+      return { 
+        x: this.x - this.w / 2, 
+        y: this.y - this.z - this.h, 
+        w: this.w, h: this.h, 
+        depth: this.y 
+      }; 
+    }, 
+ 
+    getAttackBox() { 
+      const reach = this.facing === 1 ? this.x + this.w : this.x - 36; 
+      return { x: reach, y: this.y - this.z - this.h, w: 36, h: this.h, depth: this.y }; 
+    }, 
+ 
+    // FSM Update 
+    update() { 
+      if (this.state === 'dead') return; 
+      if (hitStopFrames > 0) return; 
+ 
+      const dx = player.x - this.x; 
+      const dy = player.y - this.y; 
+      const dist = Math.sqrt(dx * dx + dy * dy); 
+ 
+      // Hurt cooldown 
+      if (this.hurtTimer > 0) { this.hurtTimer--; return; } 
+ 
+      // FSM transitions 
+      if (this.state === 'patrol') { 
+        this.x += this.patrolDir * this.speed * 0.5; 
+        this.patrolTimer--; 
+        if (this.patrolTimer <= 0) { 
+          this.patrolDir *= -1; 
+          this.patrolTimer = 60 + Math.random() * 60; 
+        } 
+        if (dist < 200) this.state = 'chase'; 
+      } 
+ 
+      else if (this.state === 'chase') { 
+        // Flank: align Y-depth first, then close X distance 
+        if (Math.abs(dy) > 12) { 
+          this.y += (dy / Math.abs(dy)) * this.speed * 0.7; 
+        } 
+        if (Math.abs(dx) > 40) { 
+          this.x += (dx / Math.abs(dx)) * this.speed; 
+        } 
+        this.facing = dx > 0 ? 1 : -1; 
+        if (dist < 45) { this.state = 'attack'; this.stateTimer = 30; } 
+        if (dist > 300) this.state = 'patrol'; 
+      } 
+ 
+      else if (this.state === 'attack') { 
+        this.stateTimer--; 
+        if (this.attackCooldown > 0) { this.attackCooldown--; } 
+        if (this.stateTimer <= 0) { 
+          // Attempt to hit player 
+          if (this.attackCooldown <= 0 && dist < 50) { 
+            const depthDiff = Math.abs(this.y - player.y); 
+            if (depthDiff < 30 && player.invincible <= 0) { 
+              player.hp -= 10; 
+              player.hp = Math.max(0, player.hp); 
+              player.invincible = 40; 
+              player.hurtTimer = 20; 
+              player.state = 'hurt'; 
+              spawnParticles(player.x, player.y - 20, '#f00', 8); 
+              shakeTimer = 8; shakeIntensity = 3; 
+              playSound('hurt'); 
+              document.getElementById('hpVal').textContent = player.hp; 
+              document.getElementById('hpBar').style.width = player.hp + '%'; 
+            } 
+            this.attackCooldown = 50; 
+          } 
+          this.state = 'chase'; 
+          this.stateTimer = 30; 
+        } 
+      } 
+ 
+      // Clamp to ground belt 
+      this.y = Math.max(GROUND_TOP + 20, Math.min(GROUND_BOT - 10, this.y)); 
+      this.x = Math.max(20, Math.min(W - 20, this.x)); 
+      this.facing = (player.x - this.x) > 0 ? 1 : -1; 
+    } 
+  }; 
+} 
+ 
+// ---- ENEMIES ARRAY ---- 
+let enemies = []; 
+function spawnWave() { 
+  enemies = []; 
+  const count = 2 + wave; 
+  for (let i = 0; i < count; i++) { 
+    const side = i % 2 === 0 ? 50 : W - 50; 
+    const depth = GROUND_TOP + 30 + Math.random() * (GROUND_BOT - GROUND_TOP - 40); 
+    enemies.push(createEnemy(side, depth, i)); 
+  } 
+} 
+spawnWave(); 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON FIST — Cyberpunk Beat Em Up</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden;font-family:'Courier New',monospace;}
+  #gameWrapper{position:relative;width:800px;height:480px;border:2px solid #0ff;box-shadow:0 0 30px #0ff;}
+  canvas{display:block;image-rendering:pixelated;width:800px;height:480px;}
+  #crt{position:absolute;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(to bottom,rgba(0,0,0,0.1) 0px,rgba(0,0,0,0.1) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:10;}
+  #hud{position:absolute;top:8px;left:8px;z-index:5;color:#0ff;font-size:13px;text-shadow:0 0 6px #0ff;}
+  #hpBar{width:160px;height:10px;background:#111;border:1px solid #0ff;margin-top:3px;}
+  #hpFill{height:100%;width:100%;background:linear-gradient(90deg,#0ff,#00f);transition:width 0.2s;}
+  #overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;color:#0ff;}
+</style>
+</head>
+<body>
+<div id="gameWrapper">
+  <canvas id="gameCanvas" width="800" height="480"></canvas>
+  <div id="crt"></div>
+  <div id="hud">HP: <div id="hpBar"><div id="hpFill"></div></div></div>
+  <div id="overlay">
+    <h1>NEON FIST</h1>
+    <button id="startBtn" style="padding:10px 20px;background:transparent;border:2px solid #0ff;color:#0ff;cursor:pointer;">START GAME</button>
+  </div>
+</div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let gameState = 'start', score = 0, player = {x:400, y:350, hp:100};
+const keys = {};
+
+document.addEventListener('keydown', e => keys[e.code] = true);
+document.addEventListener('keyup', e => keys[e.code] = false);
+document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('overlay').style.display = 'none';
+  gameState = 'playing';
+  gameLoop();
+});
+
+function draw() {
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, 800, 480);
+  ctx.fillStyle = '#0ff';
+  ctx.fillRect(player.x, player.y, 30, 50);
+}
+
+function gameLoop() {
+  if (gameState !== 'playing') return;
+  if (keys['ArrowLeft']) player.x -= 5;
+  if (keys['ArrowRight']) player.x += 5;
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
